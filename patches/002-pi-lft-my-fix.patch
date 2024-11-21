@@ -1,0 +1,21 @@
+--- a/src/router.c
++++ b/src/router.c
+@@ -965,7 +965,17 @@ static void forward_router_advertisement
+ 			/* Check if we have to rewrite DNS */
+ 			dns_ptr = (struct in6_addr*)&opt->data[6];
+ 			dns_count = (opt->len - 1) / 2;
+-		}
++		} else if (opt->type == ND_OPT_PREFIX_INFORMATION) {
++			/* Override prefix valid lifetime & preferred lifetime to 270s if less or equal to 180s */
++			struct nd_opt_prefix_info *pfx = (struct nd_opt_prefix_info *)opt;
++			if (ntohl(pfx->nd_opt_pi_valid_time) <= 180 || ntohl(pfx->nd_opt_pi_preferred_time) <= 180) {
++				pfx->nd_opt_pi_preferred_time = htonl(270);
++				pfx->nd_opt_pi_valid_time = htonl(270);
++				syslog(LOG_NOTICE, "Overrided valid_lft and preferred_lft to RA on %s", iface->name);
++			} else {
++				syslog(LOG_NOTICE, "Valid_lft and preferred_lft are not overrided to RA on %s", iface->name);
++			}
++ 		}
+ 	}
+ 
+ 	syslog(LOG_NOTICE, "Got a RA on %s", iface->name);
